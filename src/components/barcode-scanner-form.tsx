@@ -51,16 +51,43 @@ export function BarcodeScannerForm() {
 
   async function startScanning() {
     setCameraError(null);
+    
+    // Controllo preliminare supporto MediaDevices
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError(
+        "Il tuo browser non supporta l'accesso alla fotocamera. Prova con Chrome o Safari."
+      );
+      return;
+    }
+
     try {
+      // Prima richiedi permesso camera esplicitamente
+      await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" } 
+      });
+      
       const scanner = new Html5Qrcode(scannerContainerId);
       scannerRef.current = scanner;
 
+      // Prova prima con camera posteriore
+      const cameras = await Html5Qrcode.getCameras();
+      let cameraId: string | { facingMode: string };
+      
+      if (cameras && cameras.length > 0) {
+        // Usa l'ultima camera (solitamente quella posteriore)
+        cameraId = cameras[cameras.length - 1].id;
+      } else {
+        // Fallback a facingMode
+        cameraId = { facingMode: "environment" };
+      }
+
       await scanner.start(
-        { facingMode: "environment" },
+        cameraId,
         {
           fps: 10,
           qrbox: { width: 250, height: 150 },
           aspectRatio: 1.777778,
+          disableFlip: false,
         },
         (decodedText) => {
           // Barcode rilevato con successo
@@ -73,10 +100,22 @@ export function BarcodeScannerForm() {
         }
       );
       setIsScanning(true);
-    } catch (err) {
-      setCameraError(
-        "Impossibile accedere alla fotocamera. Verifica i permessi del browser."
-      );
+    } catch (err: any) {
+      let errorMessage = "Impossibile accedere alla fotocamera.";
+      
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMessage = "Permesso fotocamera negato. Autorizza nelle impostazioni del browser.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMessage = "Nessuna fotocamera trovata sul dispositivo.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        errorMessage = "Fotocamera già in uso da un'altra app. Chiudila e riprova.";
+      } else if (err.name === "OverconstrainedError") {
+        errorMessage = "Fotocamera non supporta le configurazioni richieste.";
+      } else if (err.message) {
+        errorMessage = `Errore: ${err.message}`;
+      }
+      
+      setCameraError(errorMessage);
       console.error("Camera error:", err);
     }
   }
