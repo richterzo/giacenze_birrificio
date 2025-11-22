@@ -1,0 +1,5 @@
+# Placeholder per icon-512.png
+# Crea un'icona 512x512px per la PWA
+# Puoi usare: https://www.favicon-generator.org/
+# Oppure crea un'icona con il logo del birrificio
+

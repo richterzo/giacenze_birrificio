@@ -1,6 +1,15 @@
-## App Giacenze
+## 📦 App Giacenze Birrificio
 
-Applicazione Next.js 16 con TypeScript, Prisma e PostgreSQL per la gestione delle giacenze. Include autenticazione con NextAuth, modelli `Product` e `StockMovement`, e API pronte per la scansione dei codici a barre e la registrazione dei movimenti di magazzino.
+Applicazione Next.js 16 con TypeScript, Prisma e PostgreSQL per la gestione delle giacenze. Include autenticazione con NextAuth, modelli `Product` e `StockMovement`, **scanner barcode con fotocamera** per mobile/desktop, e API pronte per la scansione dei codici a barre e la registrazione dei movimenti di magazzino.
+
+### ✨ Funzionalità Principali
+
+- 🔐 **Autenticazione sicura** con NextAuth v5
+- 📷 **Scanner barcode con fotocamera** (supporta EAN-13, Code 128, QR, etc.)
+- 📦 **Gestione prodotti** con SKU, barcode e quantità
+- 📊 **Movimenti di magazzino** (IN/OUT/ADJUST)
+- 📱 **PWA Ready** - Installabile su mobile
+- 🚀 **Deploy-ready** per Vercel + Neon
 
 ### Requisiti
 
@@ -64,7 +73,20 @@ Tutte le API (tranne il bootstrap dell’utente iniziale) richiedono sessione au
 - `npm start` → avvia build prodotta
 - `npm run lint` → esegue ESLint
 
+### Deploy su Vercel + Neon
+
+Per deployare l'applicazione in produzione, consulta la guida completa:
+
+📖 **[DEPLOY.md](./DEPLOY.md)** - Guida passo-passo per:
+- Creare database su Neon
+- Deploy su Vercel
+- Configurare variabili d'ambiente
+- Eseguire migrazioni
+- Testare la fotocamera su mobile
+
 ### Note
 
 - Prisma è configurato per PostgreSQL; per altri DB modifica `prisma/schema.prisma`.
 - Ricorda di generare il client con `npx prisma generate` dopo ogni cambio allo schema.
+- La fotocamera funziona **solo su HTTPS** (Vercel lo fornisce automaticamente).
+- Supporta tutti i formati barcode standard: EAN-13, UPC-A, Code 128, QR Code, etc.
