@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fotocamera - Diagnostica</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            color: #22c55e;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .info {
+            background: #eff6ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+            border-left: 4px solid #3b82f6;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        #video {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Test Fotocamera</h1>
+        <p>Questa pagina ti aiuta a diagnosticare problemi con la fotocamera.</p>
+    </div>
+
+    <div class="card">
+        <h2>1. Info Sistema</h2>
+        <button onclick="checkSystem()">📱 Controlla Sistema</button>
+        <pre id="systemInfo">Clicca il pulsante per vedere le info...</pre>
+    </div>
+
+    <div class="card">
+        <h2>2. Elenco Camere</h2>
+        <button onclick="listCameras()">📷 Elenca Camere</button>
+        <pre id="camerasList">Clicca il pulsante per vedere le camere...</pre>
+    </div>
+
+    <div class="card">
+        <h2>3. Test Permessi</h2>
+        <button onclick="testPermissions()">🔐 Testa Permessi</button>
+        <pre id="permissionsResult">Clicca il pulsante per testare...</pre>
+    </div>
+
+    <div class="card">
+        <h2>4. Test Camera Live</h2>
+        <button onclick="startCamera()">🎥 Avvia Camera</button>
+        <button onclick="stopCamera()" style="background: #ef4444;">⏹️ Ferma Camera</button>
+        <video id="video" autoplay playsinline style="display:none;"></video>
+        <pre id="cameraResult">Clicca "Avvia Camera" per testare...</pre>
+    </div>
+
+    <div class="card">
+        <div class="info">
+            <strong>💡 Cosa significano i risultati:</strong><br>
+            ✅ Verde = Tutto OK<br>
+            ❌ Rosso = C'è un problema<br>
+            <br>
+            Se vedi errori, fai uno screenshot e mandalo allo sviluppatore!
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+
+        function log(elementId, message, isError = false) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.style.color = isError ? '#ef4444' : '#22c55e';
+        }
+
+        function checkSystem() {
+            const info = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                protocol: window.location.protocol,
+                isHTTPS: window.location.protocol === 'https:',
+                hasMediaDevices: !!navigator.mediaDevices,
+                hasGetUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+            };
+            
+            log('systemInfo', JSON.stringify(info, null, 2));
+            console.log('📱 System Info:', info);
+        }
+
+        async function listCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(d => d.kind === 'videoinput');
+                
+                const info = cameras.map((cam, idx) => ({
+                    index: idx,
+                    id: cam.deviceId,
+                    label: cam.label || 'Camera senza nome',
+                }));
+                
+                log('camerasList', `Trovate ${cameras.length} camere:\n\n${JSON.stringify(info, null, 2)}`);
+                console.log('📷 Cameras:', info);
+            } catch (err) {
+                log('camerasList', `❌ Errore: ${err.name}\n${err.message}`, true);
+                console.error('❌ Error listing cameras:', err);
+            }
+        }
+
+        async function testPermissions() {
+            try {
+                if (!navigator.permissions) {
+                    log('permissionsResult', '⚠️ Permissions API non disponibile (normale su Safari)', false);
+                    return;
+                }
+                
+                const result = await navigator.permissions.query({ name: 'camera' });
+                log('permissionsResult', `Stato permesso camera: ${result.state}\n\n✅ granted = Autorizzato\n❓ prompt = Chiederà permesso\n❌ denied = Negato`);
+                console.log('🔐 Permission state:', result.state);
+            } catch (err) {
+                log('permissionsResult', `❌ Errore: ${err.message}`, true);
+                console.error('❌ Error checking permissions:', err);
+            }
+        }
+
+        async function startCamera() {
+            try {
+                log('cameraResult', '⏳ Richiesta accesso camera in corso...');
+                
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                const track = stream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                
+                log('cameraResult', `✅ Camera attiva!\n\nRisoluzione: ${settings.width}x${settings.height}\nFacing mode: ${settings.facingMode || 'N/A'}\nDevice: ${track.label}`);
+                console.log('✅ Camera started:', settings);
+            } catch (err) {
+                log('cameraResult', `❌ ERRORE: ${err.name}\n\nMessaggio: ${err.message}\n\n${getErrorHelp(err.name)}`, true);
+                console.error('❌ Error starting camera:', err);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('video').style.display = 'none';
+                log('cameraResult', '⏹️ Camera fermata');
+                stream = null;
+                console.log('⏹️ Camera stopped');
+            }
+        }
+
+        function getErrorHelp(errorName) {
+            const helps = {
+                'NotAllowedError': '→ Permesso negato! Vai in Impostazioni → Safari → Fotocamera',
+                'NotFoundError': '→ Nessuna camera trovata sul dispositivo',
+                'NotReadableError': '→ Camera in uso da altra app. Chiudila!',
+                'OverconstrainedError': '→ Camera non supporta le impostazioni richieste',
+            };
+            return helps[errorName] || '→ Errore sconosciuto. Controlla i permessi.';
+        }
+
+        // Auto-check al caricamento
+        checkSystem();
+    </script>
+</body>
+</html>
+
