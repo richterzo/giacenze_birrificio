@@ -52,34 +52,62 @@ export function BarcodeScannerForm() {
   async function startScanning() {
     setCameraError(null);
     
+    console.log("🔍 [DEBUG] Inizio procedura scansione...");
+    console.log("🔍 [DEBUG] User Agent:", navigator.userAgent);
+    console.log("🔍 [DEBUG] HTTPS:", window.location.protocol === "https:");
+    
     // Controllo preliminare supporto MediaDevices
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("❌ [DEBUG] MediaDevices API non supportata");
       setCameraError(
         "Il tuo browser non supporta l'accesso alla fotocamera. Prova con Chrome o Safari."
       );
       return;
     }
+    
+    console.log("✅ [DEBUG] MediaDevices API supportata");
 
     try {
       // Prima richiedi permesso camera esplicitamente
-      await navigator.mediaDevices.getUserMedia({ 
+      console.log("🔍 [DEBUG] Richiesta permessi getUserMedia...");
+      const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: "environment" } 
       });
+      console.log("✅ [DEBUG] Permessi ottenuti! Stream:", stream);
+      
+      // Ferma lo stream di test
+      stream.getTracks().forEach(track => track.stop());
+      console.log("✅ [DEBUG] Stream di test fermato");
       
       const scanner = new Html5Qrcode(scannerContainerId);
       scannerRef.current = scanner;
+      console.log("✅ [DEBUG] Scanner Html5Qrcode inizializzato");
 
       // Prova prima con camera posteriore
+      console.log("🔍 [DEBUG] Recupero lista camere...");
       const cameras = await Html5Qrcode.getCameras();
+      console.log("✅ [DEBUG] Camere trovate:", cameras.length);
+      cameras.forEach((cam, idx) => {
+        console.log(`  📷 [DEBUG] Camera ${idx}:`, cam.id, cam.label);
+      });
+      
       let cameraId: string | { facingMode: string };
       
       if (cameras && cameras.length > 0) {
         // Usa l'ultima camera (solitamente quella posteriore)
         cameraId = cameras[cameras.length - 1].id;
+        console.log("✅ [DEBUG] Usando camera ID:", cameraId);
       } else {
         // Fallback a facingMode
         cameraId = { facingMode: "environment" };
+        console.log("⚠️ [DEBUG] Fallback a facingMode: environment");
       }
+
+      console.log("🔍 [DEBUG] Avvio scanner con config:", {
+        cameraId,
+        fps: 10,
+        qrbox: { width: 250, height: 150 }
+      });
 
       await scanner.start(
         cameraId,
@@ -91,6 +119,7 @@ export function BarcodeScannerForm() {
         },
         (decodedText) => {
           // Barcode rilevato con successo
+          console.log("✅ [DEBUG] Barcode rilevato:", decodedText);
           setBarcode(decodedText);
           searchProduct(decodedText);
           stopScanning();
@@ -99,43 +128,65 @@ export function BarcodeScannerForm() {
           // Errore di scansione ignorato (normale quando non trova codici)
         }
       );
+      
       setIsScanning(true);
+      console.log("✅ [DEBUG] Scanner avviato con successo!");
+      
     } catch (err: any) {
+      console.error("❌ [DEBUG] ERRORE COMPLETO:", err);
+      console.error("❌ [DEBUG] Error name:", err.name);
+      console.error("❌ [DEBUG] Error message:", err.message);
+      console.error("❌ [DEBUG] Error stack:", err.stack);
+      
       let errorMessage = "Impossibile accedere alla fotocamera.";
       
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        errorMessage = "Permesso fotocamera negato. Autorizza nelle impostazioni del browser.";
+        errorMessage = "❌ Permesso fotocamera NEGATO. Vai in Impostazioni iPhone → Safari → Fotocamera → Consenti";
+        console.error("❌ [DEBUG] Permessi negati dall'utente o dalle impostazioni");
       } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        errorMessage = "Nessuna fotocamera trovata sul dispositivo.";
+        errorMessage = "❌ Nessuna fotocamera trovata sul dispositivo.";
+        console.error("❌ [DEBUG] Nessuna camera disponibile");
       } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-        errorMessage = "Fotocamera già in uso da un'altra app. Chiudila e riprova.";
+        errorMessage = "❌ Fotocamera già in uso da un'altra app. Chiudila e riprova.";
+        console.error("❌ [DEBUG] Camera già in uso");
       } else if (err.name === "OverconstrainedError") {
-        errorMessage = "Fotocamera non supporta le configurazioni richieste.";
+        errorMessage = "❌ Fotocamera non supporta le configurazioni richieste.";
+        console.error("❌ [DEBUG] Constraints non supportate");
       } else if (err.message) {
-        errorMessage = `Errore: ${err.message}`;
+        errorMessage = `❌ Errore: ${err.message}`;
       }
       
+      errorMessage += ` [${err.name}]`;
+      
       setCameraError(errorMessage);
-      console.error("Camera error:", err);
+      console.error("❌ [DEBUG] Messaggio mostrato all'utente:", errorMessage);
     }
   }
 
   async function stopScanning() {
+    console.log("🔍 [DEBUG] Fermata scanner richiesta...");
     if (scannerRef.current && isScanning) {
       try {
         await scannerRef.current.stop();
         scannerRef.current = null;
         setIsScanning(false);
+        console.log("✅ [DEBUG] Scanner fermato con successo");
       } catch (err) {
-        console.error("Error stopping scanner:", err);
+        console.error("❌ [DEBUG] Errore fermata scanner:", err);
       }
+    } else {
+      console.log("⚠️ [DEBUG] Scanner già fermo o non inizializzato");
     }
   }
 
   useEffect(() => {
+    console.log("🔍 [DEBUG] Componente BarcodeScannerForm montato");
     return () => {
+      console.log("🔍 [DEBUG] Componente BarcodeScannerForm smontato - cleanup scanner");
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
+        scannerRef.current.stop().catch((err) => {
+          console.error("❌ [DEBUG] Errore cleanup scanner:", err);
+        });
       }
     };
   }, []);
