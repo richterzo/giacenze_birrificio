@@ -67,6 +67,22 @@ export function BarcodeScannerForm() {
     
     console.log("✅ [DEBUG] MediaDevices API supportata");
 
+    // PRIMA rendi visibile il div, POI inizializza lo scanner
+    setIsScanning(true);
+    
+    // Aspetta che React abbia renderizzato il div nel DOM
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Verifica che l'elemento esista
+    const element = document.getElementById(scannerContainerId);
+    if (!element) {
+      console.error("❌ [DEBUG] Elemento non trovato dopo render!");
+      setCameraError("Errore interno: elemento scanner non trovato. Ricarica la pagina.");
+      setIsScanning(false);
+      return;
+    }
+    console.log("✅ [DEBUG] Elemento trovato nel DOM:", element);
+
     try {
       // Prima richiedi permesso camera esplicitamente
       console.log("🔍 [DEBUG] Richiesta permessi getUserMedia...");
@@ -129,34 +145,41 @@ export function BarcodeScannerForm() {
         }
       );
       
-      setIsScanning(true);
       console.log("✅ [DEBUG] Scanner avviato con successo!");
       
     } catch (err: any) {
       console.error("❌ [DEBUG] ERRORE COMPLETO:", err);
-      console.error("❌ [DEBUG] Error name:", err.name);
-      console.error("❌ [DEBUG] Error message:", err.message);
-      console.error("❌ [DEBUG] Error stack:", err.stack);
+      console.error("❌ [DEBUG] Error name:", err?.name || "undefined");
+      console.error("❌ [DEBUG] Error message:", err?.message || "undefined");
+      console.error("❌ [DEBUG] Error stack:", err?.stack || "undefined");
+      console.error("❌ [DEBUG] Error toString:", err?.toString());
+      
+      // Reset stato se errore
+      setIsScanning(false);
       
       let errorMessage = "Impossibile accedere alla fotocamera.";
       
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
         errorMessage = "❌ Permesso fotocamera NEGATO. Vai in Impostazioni iPhone → Safari → Fotocamera → Consenti";
         console.error("❌ [DEBUG] Permessi negati dall'utente o dalle impostazioni");
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
         errorMessage = "❌ Nessuna fotocamera trovata sul dispositivo.";
         console.error("❌ [DEBUG] Nessuna camera disponibile");
-      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+      } else if (err?.name === "NotReadableError" || err?.name === "TrackStartError") {
         errorMessage = "❌ Fotocamera già in uso da un'altra app. Chiudila e riprova.";
         console.error("❌ [DEBUG] Camera già in uso");
-      } else if (err.name === "OverconstrainedError") {
+      } else if (err?.name === "OverconstrainedError") {
         errorMessage = "❌ Fotocamera non supporta le configurazioni richieste.";
         console.error("❌ [DEBUG] Constraints non supportate");
-      } else if (err.message) {
+      } else if (err?.message) {
         errorMessage = `❌ Errore: ${err.message}`;
+      } else if (typeof err === "string") {
+        errorMessage = `❌ Errore: ${err}`;
       }
       
-      errorMessage += ` [${err.name}]`;
+      if (err?.name) {
+        errorMessage += ` [${err.name}]`;
+      }
       
       setCameraError(errorMessage);
       console.error("❌ [DEBUG] Messaggio mostrato all'utente:", errorMessage);
